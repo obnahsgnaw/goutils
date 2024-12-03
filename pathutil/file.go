@@ -28,3 +28,11 @@ func ValidFile(filename string) (file string, err error) {
 
 	return
 }
+
+func ReadFile(filename string) ([]byte, error) {
+	if ff, err := ValidFile(filename); err != nil {
+		return nil, err
+	} else {
+		return os.ReadFile(ff)
+	}
+}
