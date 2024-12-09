@@ -7,14 +7,6 @@ import (
 
 type Option func(*Rsa)
 
-func Encoder(s coder.Encoder) Option {
-	return func(e *Rsa) {
-		if s != nil {
-			e.encoder = s
-		}
-	}
-}
-
 func PKCS1Private() Option {
 	return func(e *Rsa) {
 		e.prkType = prkPKCS1
@@ -36,6 +28,14 @@ func PKCS1Public() Option {
 func PKIXPublic() Option {
 	return func(e *Rsa) {
 		e.pukType = pukPKIX
+	}
+}
+
+func Encoder(s coder.Encoder) Option {
+	return func(e *Rsa) {
+		if s != nil {
+			e.encoder = s
+		}
 	}
 }
 

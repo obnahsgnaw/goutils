@@ -78,6 +78,12 @@ func (e *ADes) Disable() {
 }
 
 func (e *ADes) Encrypt(data, key []byte, encode bool) (encrypted, iv []byte, err error) {
+	iv = e.t.RandIv()
+	encrypted, err = e.EncryptWithIv(data, key, encode, iv)
+	return
+}
+
+func (e *ADes) EncryptWithIv(data, key []byte, encode bool, iv []byte) (encrypted []byte, err error) {
 	if len(data) == 0 {
 		return
 	}
@@ -87,7 +93,6 @@ func (e *ADes) Encrypt(data, key []byte, encode bool) (encrypted, iv []byte, err
 		if esBlock, err = e.getEsBlock(key); err != nil {
 			return
 		}
-		iv = e.t.RandIv()
 		if block, err = e.getModeBlock(esBlock, iv, true); err != nil {
 			return
 		}
