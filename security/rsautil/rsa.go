@@ -68,15 +68,15 @@ func (s *Rsa) Generate(bits int) (privateKey []byte, publicKey []byte, err error
 		err = ErrBitTooShort
 		return
 	}
-	var paKey *rsa.PrivateKey
-	paKey, err = rsa.GenerateKey(rand.Reader, bits)
+	var priKey *rsa.PrivateKey
+	priKey, err = rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return
 	}
 	var paBuf = bytes.NewBufferString("")
 	err = pem.Encode(paBuf, &pem.Block{
-		Type:  "rsa private key",
-		Bytes: x509.MarshalPKCS1PrivateKey(paKey),
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(priKey),
 	})
 	if err != nil {
 		return
@@ -84,14 +84,18 @@ func (s *Rsa) Generate(bits int) (privateKey []byte, publicKey []byte, err error
 	privateKey = paBuf.Bytes()
 
 	var derStream []byte
-	derStream, err = x509.MarshalPKIXPublicKey(&paKey.PublicKey)
-	if err != nil {
-		return
+	if s.pukType == pukPKIX {
+		derStream, err = x509.MarshalPKIXPublicKey(&priKey.PublicKey)
+		if err != nil {
+			return
+		}
+	} else {
+		derStream = x509.MarshalPKCS1PublicKey(&priKey.PublicKey)
 	}
 
 	var puBuf = bytes.NewBufferString("")
 	err = pem.Encode(puBuf, &pem.Block{
-		Type:  "rsa public key",
+		Type:  "RSA PUBLIC KEY",
 		Bytes: derStream,
 	})
 
