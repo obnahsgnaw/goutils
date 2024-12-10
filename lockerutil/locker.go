@@ -10,6 +10,6 @@ type Builder interface {
 
 type Locker interface {
 	Error() error
-	Exist() bool
+	Hit() bool
 	Unlock()
 }
