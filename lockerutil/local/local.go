@@ -31,8 +31,8 @@ func (l *Locker) Error() error {
 	return nil
 }
 
-func (l *Locker) Exist() bool {
-	return false
+func (l *Locker) Hit() bool {
+	return true
 }
 
 func (l *Locker) Unlock() {

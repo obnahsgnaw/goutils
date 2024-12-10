@@ -72,6 +72,6 @@ func (l *Locker) Error() error {
 	return l.err
 }
 
-func (l *Locker) Exist() bool {
-	return l.exist
+func (l *Locker) Hit() bool {
+	return !l.exist
 }
