@@ -37,3 +37,12 @@ func RuntimeDir() (string, error) {
 	dir := filepath.Dir(ex)
 	return dir, nil
 }
+
+func Mkdir(dirPath string, mode os.FileMode) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err = os.Mkdir(dirPath, mode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
