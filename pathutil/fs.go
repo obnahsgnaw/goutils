@@ -12,6 +12,9 @@ func CopyEmbedFsDir(f embed.FS, dirName, rootPath string, replace func(name stri
 		replace = func(name string, content []byte) (string, []byte) { return name, content }
 	}
 	rpDir, _ := replace(dirName, nil)
+	if rpDir == "" {
+		return nil
+	}
 	if err = Mkdir(filepath.Join(rootPath, rpDir), 0755); err != nil {
 		return
 	}
@@ -43,6 +46,9 @@ func CopyEmbedFsFile(f embed.FS, fileName, rootPath string, replace func(name st
 		return
 	}
 	rpFileName, rpContent := replace(fileName, content)
+	if rpFileName == "" {
+		return
+	}
 	if err = os.WriteFile(filepath.Join(rootPath, rpFileName), rpContent, 0640); err != nil {
 		return
 	}
