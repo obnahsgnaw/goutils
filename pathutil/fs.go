@@ -15,7 +15,7 @@ func CopyEmbedFsDir(f embed.FS, dirName, rootPath string, replace func(name stri
 	if rpDir == "" {
 		return nil
 	}
-	if err = Mkdir(filepath.Join(rootPath, rpDir), 0755); err != nil {
+	if err = MkdirAll(filepath.Join(rootPath, rpDir), 0755); err != nil {
 		return
 	}
 	var dirs []fs.DirEntry
