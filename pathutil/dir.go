@@ -46,3 +46,12 @@ func Mkdir(dirPath string, mode os.FileMode) error {
 	}
 	return nil
 }
+
+func MkdirAll(dirPath string, mode os.FileMode) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(dirPath, mode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
