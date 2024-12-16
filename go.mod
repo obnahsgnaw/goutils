@@ -6,6 +6,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/spf13/viper v1.16.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
