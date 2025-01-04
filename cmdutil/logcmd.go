@@ -1,42 +1,71 @@
 package cmdutil
 
 import (
+	"bufio"
 	"bytes"
+	"io"
+	"log"
+	"os"
 	"os/exec"
 )
 
-func RunLogCmd(log func(msg string), cmdName string, args ...string) error {
+func RunLogCmd(logFn func(msg string), cmdName string, args ...string) (err error) {
+	var stdout, stderr io.ReadCloser
 	cmd := exec.Command(cmdName, args...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
 
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	if stdout, err = cmd.StdoutPipe(); err != nil {
+		return
+	}
+	if stderr, err = cmd.StderrPipe(); err != nil {
+		return
+	}
 
 	if err = cmd.Start(); err != nil {
-		return err
+		return
 	}
 
-	for {
-		temp := make([]byte, 1024)
-		_, err = stdout.Read(temp)
-		if err != nil {
-			break
-		}
-		lines := bytes.Split(bytes.Trim(temp, "\x00"), []byte{'\n'})
-		for _, line := range lines {
-			lineStr := string(line)
-			if lineStr != "" && log != nil {
-				log(lineStr)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			lines := bytes.Split(bytes.Trim(scanner.Bytes(), "\x00"), []byte{'\n'})
+			for _, line := range lines {
+				lineStr := string(line)
+				if lineStr != "" && logFn != nil {
+					logFn(lineStr)
+				}
 			}
 		}
+		if err1 := scanner.Err(); err1 != nil {
+			log.Fatal(err1)
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			lines := bytes.Split(bytes.Trim(scanner.Bytes(), "\x00"), []byte{'\n'})
+			for _, line := range lines {
+				lineStr := string(line)
+				if lineStr != "" && logFn != nil {
+					logFn(lineStr)
+				}
+			}
+		}
+		if err1 := scanner.Err(); err1 != nil {
+			log.Fatal(err1)
+		}
+	}()
+
+	return cmd.Wait()
+}
+
+func RunCmd(cmdName string, args ...string) (err error) {
+	cmd := exec.Command(cmdName, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err = cmd.Start(); err != nil {
+		return
 	}
 
-	if err = cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return cmd.Wait()
 }
