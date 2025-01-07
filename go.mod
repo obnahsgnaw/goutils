@@ -7,6 +7,8 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/spf13/viper v1.16.0
 	google.golang.org/protobuf v1.33.0
+	github.com/gin-gonic/gin v1.9.1
+	github.com/gin-contrib/gzip v1.0.1
 )
 
 require (
