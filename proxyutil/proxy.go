@@ -46,3 +46,18 @@ func replacePathPrefix(path, rawPath, oldPrefix, newPrefix string) (newPath, new
 	newRawPath = strings.TrimRight(newRawPath, "/")
 	return
 }
+
+func NewProxy(targetURL *url.URL, replacedPath string) *httputil.ReverseProxy {
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	// 重写Director方法来修改传入请求的URL
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = req.URL.Host
+		if replacedPath != "" {
+			req.URL.Path, req.URL.RawPath = replacePathPrefix(req.URL.Path, req.URL.RawPath, replacedPath, "")
+		}
+	}
+
+	return proxy
+}
