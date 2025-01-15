@@ -1,6 +1,7 @@
 package ginutil
 
 import (
+	"bytes"
 	"crypto"
 	"embed"
 	"github.com/gin-contrib/gzip"
@@ -29,6 +30,7 @@ type StaticFsCache struct {
 	etags        map[string]string
 	cacheTtl     int64
 	relativePath string
+	replace      map[string]func([]byte) []byte
 }
 
 func NewStaticFsCache(engin *gin.Engine, rootDir string, o ...FsCacheOption) *StaticFsCache {
@@ -37,6 +39,7 @@ func NewStaticFsCache(engin *gin.Engine, rootDir string, o ...FsCacheOption) *St
 		relativePath: "/",
 		rootDir:      rootDir,
 		etags:        make(map[string]string),
+		replace:      make(map[string]func([]byte) []byte),
 	}
 	s.with(o...)
 	return s
@@ -72,9 +75,7 @@ func (s *StaticFsCache) Init() (err error) {
 		}
 	}
 
-	g := s.engin.Group(s.relativePath, gzip.Gzip(gzip.DefaultCompression), cacheMiddleware(func() *StaticFsCache {
-		return s
-	}, s.cacheTtl, ""))
+	g := s.engin.Group(s.relativePath, gzip.Gzip(gzip.DefaultCompression), cacheMiddleware(func() *StaticFsCache { return s }, s.cacheTtl, s.relativePath))
 	if s.fs != nil {
 		sub, _ := fs.Sub(s.fs, s.rootDir)
 		g.StaticFS("/", http.FS(sub))
@@ -148,6 +149,19 @@ func (s *StaticFsCache) etag(filename string) string {
 	return ""
 }
 
+type CustomResponseWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (w CustomResponseWriter) Write(b []byte) (int, error) {
+	return w.body.Write(b)
+}
+
+func (w CustomResponseWriter) RawWrite(b []byte) (int, error) {
+	return w.ResponseWriter.Write(b)
+}
+
 func cacheMiddleware(s func() *StaticFsCache, ttl int64, prefix string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if ttl > 0 {
@@ -156,7 +170,11 @@ func cacheMiddleware(s func() *StaticFsCache, ttl int64, prefix string) func(c *
 				c.Header(cacheControlHeader, cacheControlValue+strconv.FormatInt(ttl, 10))
 
 				// 生成并设置 ETag 头
-				eTag := s().etag(c.Request.URL.Path)
+				rqPath := c.Request.URL.Path
+				if s().fs != nil {
+					rqPath = path.Join(s().rootDir, rqPath)
+				}
+				eTag := s().etag(rqPath)
 				c.Header(eTagHeader, eTag)
 
 				// 检查 If-None-Match 头与生成的 ETag 是否匹配，若匹配则返回 304 Not Modified
@@ -169,6 +187,16 @@ func cacheMiddleware(s func() *StaticFsCache, ttl int64, prefix string) func(c *
 				}
 			}
 		}
+		crw := &CustomResponseWriter{
+			ResponseWriter: c.Writer,
+			body:           bytes.NewBufferString(""),
+		}
+		c.Writer = crw
 		c.Next()
+		if rp, ok := s().replace[c.Request.URL.Path]; ok {
+			crw.RawWrite(rp(crw.body.Bytes()))
+		} else {
+			crw.RawWrite(crw.body.Bytes())
+		}
 	}
 }
