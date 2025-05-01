@@ -23,6 +23,9 @@ type ErrBuilder struct {
 }
 
 func (b *ErrBuilder) NewError(err error, desc ...string) error {
+	if err == nil && len(desc) == 0 {
+		return nil
+	}
 	if b.Prefix == "" {
 		panic("error builder prefix not set")
 	}
