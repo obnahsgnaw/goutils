@@ -22,7 +22,7 @@ type ErrBuilder struct {
 	Prefix string
 }
 
-func (b *ErrBuilder) New(err error, desc ...string) error {
+func (b *ErrBuilder) NewError(err error, desc ...string) error {
 	if b.Prefix == "" {
 		panic("error builder prefix not set")
 	}
