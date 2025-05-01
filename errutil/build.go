@@ -19,18 +19,18 @@ func (b *Builder) New(err error, desc ...string) error {
 }
 
 type ErrBuilder struct {
-	Prefix string
+	ErrPrefix string
 }
 
 func (b *ErrBuilder) NewError(err error, desc ...string) error {
 	if err == nil && len(desc) == 0 {
 		return nil
 	}
-	if b.Prefix == "" {
+	if b.ErrPrefix == "" {
 		panic("error builder prefix not set")
 	}
 	if err != nil {
-		return NewFromError(err, append([]string{b.Prefix}, desc...)...)
+		return NewFromError(err, append([]string{b.ErrPrefix}, desc...)...)
 	}
-	return New(append([]string{b.Prefix, ": "}, desc...)...)
+	return New(append([]string{b.ErrPrefix, ": "}, desc...)...)
 }
