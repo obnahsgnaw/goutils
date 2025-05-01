@@ -29,8 +29,13 @@ func (b *ErrBuilder) NewError(err error, desc ...string) error {
 	if b.ErrPrefix == "" {
 		panic("error builder prefix not set")
 	}
-	if err != nil {
-		return NewFromError(err, append([]string{b.ErrPrefix}, desc...)...)
+	prefixedDesc := []string{b.ErrPrefix}
+	if len(desc) > 0 {
+		prefixedDesc = append(prefixedDesc, ": ")
+		prefixedDesc = append(prefixedDesc, desc...)
 	}
-	return New(append([]string{b.ErrPrefix, ": "}, desc...)...)
+	if err != nil {
+		return NewFromError(err, prefixedDesc...)
+	}
+	return New(prefixedDesc...)
 }
