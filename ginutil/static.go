@@ -24,13 +24,14 @@ const (
 )
 
 type StaticFsCache struct {
-	engin        *gin.Engine
-	fs           *embed.FS
-	rootDir      string
-	etags        map[string]string
-	cacheTtl     int64
-	relativePath string
-	replace      map[string]func([]byte) []byte
+	engin         *gin.Engine
+	fs            *embed.FS
+	fsFallbackDir string
+	rootDir       string
+	etags         map[string]string
+	cacheTtl      int64
+	relativePath  string
+	replace       map[string]func([]byte) []byte
 }
 
 func NewStaticFsCache(engin *gin.Engine, rootDir string, o ...FsCacheOption) *StaticFsCache {
@@ -66,11 +67,17 @@ func (s *StaticFsCache) Init() (err error) {
 
 	for _, item := range items {
 		if item.IsDir() {
-			err = s.initDir(s.rootDir, item)
+			err = s.initDir(s.rootDir, item, s.fs != nil)
 		} else {
-			err = s.initFile(s.rootDir, item)
+			err = s.initFile(s.rootDir, item, s.fs != nil)
 		}
 		if err != nil {
+			return err
+		}
+	}
+
+	if s.fs != nil && s.fsFallbackDir != "" {
+		if err = s.initFallback(); err != nil {
 			return err
 		}
 	}
@@ -78,7 +85,11 @@ func (s *StaticFsCache) Init() (err error) {
 	g := s.engin.Group(s.relativePath, gzip.Gzip(gzip.DefaultCompression), cacheMiddleware(func() *StaticFsCache { return s }, s.cacheTtl, s.relativePath))
 	if s.fs != nil {
 		sub, _ := fs.Sub(s.fs, s.rootDir)
-		g.StaticFS("/", http.FS(sub))
+		if s.fsFallbackDir == "" {
+			g.StaticFS("/", http.FS(sub))
+		} else {
+			g.StaticFS("/", FS(sub, s.fsFallbackDir))
+		}
 	} else {
 		g.Static("/", s.rootDir)
 	}
@@ -86,13 +97,34 @@ func (s *StaticFsCache) Init() (err error) {
 	return nil
 }
 
-func (s *StaticFsCache) initDir(base string, entry fs.DirEntry) (err error) {
+func (s *StaticFsCache) initFallback() (err error) {
+	var items []fs.DirEntry
+	items, err = os.ReadDir(s.fsFallbackDir)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		if item.IsDir() {
+			err = s.initDir(s.fsFallbackDir, item, false)
+		} else {
+			err = s.initFile(s.fsFallbackDir, item, false)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *StaticFsCache) initDir(base string, entry fs.DirEntry, fsSystem bool) (err error) {
 	var items []fs.DirEntry
 	name := entry.Name()
 	if base != "" {
 		name = path.Join(base, name)
 	}
-	if s.fs == nil {
+	if !fsSystem {
 		items, err = os.ReadDir(name)
 	} else {
 		items, err = s.fs.ReadDir(name)
@@ -102,9 +134,9 @@ func (s *StaticFsCache) initDir(base string, entry fs.DirEntry) (err error) {
 	}
 	for _, item := range items {
 		if item.IsDir() {
-			err = s.initDir(name, item)
+			err = s.initDir(name, item, fsSystem)
 		} else {
-			err = s.initFile(name, item)
+			err = s.initFile(name, item, fsSystem)
 		}
 		if err != nil {
 			return err
@@ -113,7 +145,7 @@ func (s *StaticFsCache) initDir(base string, entry fs.DirEntry) (err error) {
 	return nil
 }
 
-func (s *StaticFsCache) initFile(base string, entry fs.DirEntry) (err error) {
+func (s *StaticFsCache) initFile(base string, entry fs.DirEntry, fsSystem bool) (err error) {
 	name := entry.Name()
 	if strings.HasPrefix(name, ".") {
 		return nil
@@ -122,7 +154,7 @@ func (s *StaticFsCache) initFile(base string, entry fs.DirEntry) (err error) {
 		name = path.Join(base, name)
 	}
 	var f fs.File
-	if s.fs == nil {
+	if !fsSystem {
 		f, err = os.Open(name)
 	} else {
 		f, err = s.fs.Open(name)
@@ -138,7 +170,9 @@ func (s *StaticFsCache) initFile(base string, entry fs.DirEntry) (err error) {
 	if err2 != nil {
 		return err2
 	}
-	s.etags[name] = string(hash)
+	if _, ok := s.etags[name]; !ok {
+		s.etags[name] = string(hash)
+	}
 	return nil
 }
 
@@ -194,9 +228,9 @@ func cacheMiddleware(s func() *StaticFsCache, ttl int64, prefix string) func(c *
 		c.Writer = crw
 		c.Next()
 		if rp, ok := s().replace[c.Request.URL.Path]; ok {
-			crw.RawWrite(rp(crw.body.Bytes()))
+			_, _ = crw.RawWrite(rp(crw.body.Bytes()))
 		} else {
-			crw.RawWrite(crw.body.Bytes())
+			_, _ = crw.RawWrite(crw.body.Bytes())
 		}
 	}
 }

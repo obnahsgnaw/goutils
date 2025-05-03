@@ -19,6 +19,12 @@ func Fs(fs *embed.FS) FsCacheOption {
 	}
 }
 
+func FsFallbackDir(dir string) FsCacheOption {
+	return func(s *StaticFsCache) {
+		s.fsFallbackDir = dir
+	}
+}
+
 func RelativePath(relativePath string) FsCacheOption {
 	return func(s *StaticFsCache) {
 		s.relativePath = "/" + strings.TrimPrefix(relativePath, "/")
