@@ -1,5 +1,7 @@
 package jsonutil
 
+import "google.golang.org/protobuf/encoding/protowire"
+
 func IsFieldPresent(data []byte, field string) bool {
 	var obj map[string]interface{}
 	if err := Decode(data, &obj); err == nil {
@@ -9,16 +11,16 @@ func IsFieldPresent(data []byte, field string) bool {
 	return false
 }
 
-func IsFieldsPresent(data []byte, fields []string) map[string]bool {
-	var result = make(map[string]bool)
-	for _, field := range fields {
-		result[field] = false
+func IsFieldsPresent(data []byte, fields map[protowire.Number]string) map[protowire.Number]bool {
+	var result = make(map[protowire.Number]bool)
+	for k := range fields {
+		result[k] = false
 	}
 	var obj map[string]interface{}
 	if err := Decode(data, &obj); err == nil {
-		for _, field := range fields {
+		for k, field := range fields {
 			_, ok := obj[field]
-			result[field] = ok
+			result[k] = ok
 		}
 	}
 	return result
