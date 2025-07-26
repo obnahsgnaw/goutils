@@ -22,7 +22,7 @@ type Manager struct {
 
 type Event int
 
-func New(ctx context.Context) *Manager {
+func NewManager(ctx context.Context) *Manager {
 	return &Manager{
 		ctx:     ctx,
 		clients: make(map[*Client]struct{}),
@@ -171,7 +171,7 @@ func (s *Manager) addClientTag(c *Client, tag string) {
 	if _, ok := s.tags[tag]; !ok {
 		s.tags[tag] = NewGroup(tag)
 	}
-	s.groups[tag].Join(c)
+	s.tags[tag].Join(c)
 }
 
 func (s *Manager) rmClientTag(c *Client, tag string) {
