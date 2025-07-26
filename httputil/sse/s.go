@@ -5,7 +5,13 @@ import (
 	"sync"
 )
 
-type Service struct {
+const (
+	Connect Event = iota
+	Disconnect
+)
+
+// Manager Maintain SSE connections
+type Manager struct {
 	ctx      context.Context
 	mu       sync.Mutex
 	clients  map[*Client]struct{}
@@ -16,13 +22,8 @@ type Service struct {
 
 type Event int
 
-const (
-	Connect Event = iota
-	DisConnect
-)
-
-func New(ctx context.Context) *Service {
-	return &Service{
+func New(ctx context.Context) *Manager {
+	return &Manager{
 		ctx:     ctx,
 		clients: make(map[*Client]struct{}),
 		tags:    make(map[string]*Group),
@@ -33,19 +34,26 @@ func New(ctx context.Context) *Service {
 	}
 }
 
-func (s *Service) NewClient() *Client {
+func (s *Manager) NewClient() *Client {
 	c := NewClient(s.ctx)
 	c.service = s
 	s.addClient(c)
 	return c
 }
 
-func (s *Service) AddClient(c *Client) {
+func (s *Manager) AddClient(c *Client) {
 	c.service = s
 	s.addClient(c)
 }
 
-func (s *Service) GetClient(tag string) []*Client {
+func (s *Manager) addClient(c *Client) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clients[c] = struct{}{}
+	s.listener(Connect, c)
+}
+
+func (s *Manager) GetClient(tag string) []*Client {
 	v, ok := s.tags[tag]
 	if ok {
 		return v.Members()
@@ -53,7 +61,7 @@ func (s *Service) GetClient(tag string) []*Client {
 	return nil
 }
 
-func (s *Service) RemoveClient(c *Client) {
+func (s *Manager) RemoveClient(c *Client) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.clients, c)
@@ -73,10 +81,10 @@ func (s *Service) RemoveClient(c *Client) {
 			}
 		}
 	}
-	s.listener(DisConnect, c)
+	s.listener(Disconnect, c)
 }
 
-func (s *Service) BroadcastAll(message *Message) {
+func (s *Manager) BroadcastAll(message *Message) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var wg sync.WaitGroup
@@ -93,7 +101,7 @@ func (s *Service) BroadcastAll(message *Message) {
 	wg.Wait()
 }
 
-func (s *Service) BroadcastGroup(group string, message *Message) {
+func (s *Manager) BroadcastGroup(group string, message *Message) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var wg sync.WaitGroup
@@ -116,7 +124,7 @@ func (s *Service) BroadcastGroup(group string, message *Message) {
 	wg.Wait()
 }
 
-func (s *Service) BroadcastTag(tag string, message *Message) {
+func (s *Manager) BroadcastTag(tag string, message *Message) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var wg sync.WaitGroup
@@ -139,32 +147,25 @@ func (s *Service) BroadcastTag(tag string, message *Message) {
 	wg.Wait()
 }
 
-func (s *Service) ConnectionCount() int {
+func (s *Manager) ConnectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.clients)
 }
 
-func (s *Service) GroupCount() int {
+func (s *Manager) GroupCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.groups)
 }
 
-func (s *Service) SetListener(listener func(e Event, c *Client)) {
+func (s *Manager) SetListener(listener func(e Event, c *Client)) {
 	if listener != nil {
 		s.listener = listener
 	}
 }
 
-func (s *Service) addClient(c *Client) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.clients[c] = struct{}{}
-	s.listener(Connect, c)
-}
-
-func (s *Service) addClientTag(c *Client, tag string) {
+func (s *Manager) addClientTag(c *Client, tag string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.tags[tag]; !ok {
@@ -173,7 +174,7 @@ func (s *Service) addClientTag(c *Client, tag string) {
 	s.groups[tag].Join(c)
 }
 
-func (s *Service) rmClientTag(c *Client, tag string) {
+func (s *Manager) rmClientTag(c *Client, tag string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if v, ok := s.tags[tag]; ok {
@@ -184,7 +185,7 @@ func (s *Service) rmClientTag(c *Client, tag string) {
 	}
 }
 
-func (s *Service) addClientGroup(c *Client, group string) {
+func (s *Manager) addClientGroup(c *Client, group string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.groups[group]; !ok {
@@ -193,7 +194,7 @@ func (s *Service) addClientGroup(c *Client, group string) {
 	s.groups[group].Join(c)
 }
 
-func (s *Service) rmClientGroup(c *Client, group string) {
+func (s *Manager) rmClientGroup(c *Client, group string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if v, ok := s.groups[group]; ok {

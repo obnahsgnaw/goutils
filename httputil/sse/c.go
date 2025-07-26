@@ -7,11 +7,12 @@ import (
 	"time"
 )
 
+// Client Identify an SSE client
 type Client struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	mu       sync.Mutex
-	service  *Service
+	service  *Manager
 	w        http.ResponseWriter
 	r        *http.Request
 	optional interface{}
@@ -20,6 +21,7 @@ type Client struct {
 	groups   map[string]struct{}
 }
 
+// NewClient Initialize a new connection, which can also be maintained in the Manager
 func NewClient(ctx context.Context) *Client {
 	c1, cl := context.WithCancel(ctx)
 	return &Client{
@@ -31,14 +33,17 @@ func NewClient(ctx context.Context) *Client {
 	}
 }
 
+// SetOptional Set up a custom binding data object
 func (c *Client) SetOptional(optional interface{}) {
 	c.optional = optional
 }
 
+// GetOptional Returns the custom data binding object that was set
 func (c *Client) GetOptional() interface{} {
 	return c.optional
 }
 
+// AddTag Add custom binding tags, and later sections query based on the tags in the Manager
 func (c *Client) AddTag(tag string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -48,6 +53,7 @@ func (c *Client) AddTag(tag string) {
 	}
 }
 
+// RmTag Remove custom tags
 func (c *Client) RmTag(tag string) {
 	delete(c.tags, tag)
 	if c.service != nil {
@@ -55,6 +61,7 @@ func (c *Client) RmTag(tag string) {
 	}
 }
 
+// JoinGroup Join the group, and the follow-up department will broadcast within the group
 func (c *Client) JoinGroup(group string) {
 	c.groups[group] = struct{}{}
 	if c.service != nil {
@@ -62,6 +69,7 @@ func (c *Client) JoinGroup(group string) {
 	}
 }
 
+// LeaveGroup Leave the group
 func (c *Client) LeaveGroup(group string) {
 	delete(c.groups, group)
 	if c.service != nil {
@@ -69,6 +77,7 @@ func (c *Client) LeaveGroup(group string) {
 	}
 }
 
+// Start HTTP service processing
 func (c *Client) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if c.service != nil {
@@ -98,6 +107,7 @@ func (c *Client) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	<-c.ctx.Done()
 }
 
+// Send Send data messages
 func (c *Client) Send(message *Message) {
 	c.channel <- message
 }
@@ -114,6 +124,7 @@ func (c *Client) write(message *Message) {
 	c.w.(http.Flusher).Flush()
 }
 
+// Provider Set the timing of the data supply
 func (c *Client) Provider(provider func() *Message, interval time.Duration) {
 	go func() {
 		for {
