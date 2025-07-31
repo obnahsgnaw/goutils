@@ -31,12 +31,17 @@ func Encode(m *Message) string {
 	if m.Event != "" {
 		msg = strutil.ToString("event: ", m.Event, "\n")
 	}
-	msg += strutil.ToString("data: ", m.Data)
+	if m.Data != "" {
+		msg += strutil.ToString("data: ", m.Data)
+	}
 	if m.Id != "" {
 		msg += strutil.ToString("id: ", m.Id, "\n")
 	}
 	if m.Retry != 0 {
 		msg += strutil.ToString("retry: ", strconv.Itoa(m.Retry), "\n")
+	}
+	if msg == "" {
+		msg += ":ok"
 	}
 	msg += "\n\n"
 	return msg

@@ -19,6 +19,7 @@ type Client struct {
 	channel  chan *Message
 	tags     map[string]struct{}
 	groups   map[string]struct{}
+	retry    int
 }
 
 // NewClient Initialize a new connection, which can also be maintained in the Manager
@@ -30,6 +31,7 @@ func NewClient(ctx context.Context) *Client {
 		channel: make(chan *Message, 5),
 		tags:    make(map[string]struct{}),
 		groups:  make(map[string]struct{}),
+		retry:   5000,
 	}
 }
 
@@ -41,6 +43,11 @@ func (c *Client) SetOptional(optional interface{}) {
 // GetOptional Returns the custom data binding object that was set
 func (c *Client) GetOptional() interface{} {
 	return c.optional
+}
+
+// Retry the client retry interval
+func (c *Client) Retry(retry int) {
+	c.retry = retry
 }
 
 // AddTag Add custom binding tags, and later sections query based on the tags in the Manager
@@ -90,6 +97,9 @@ func (c *Client) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	m := NewEventMessage("connected", "")
+	m.Retry = c.retry
+	c.write(m)
 	go func() {
 		for {
 			select {
