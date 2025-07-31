@@ -1,32 +1,28 @@
 package sse
 
-import "github.com/obnahsgnaw/goutils/strutil"
+import (
+	"github.com/obnahsgnaw/goutils/strutil"
+	"strconv"
+)
 
 type Message struct {
 	Event string
 	Data  string
-	pairs []string
+	Id    string
+	Retry int
 }
 
-func NewMessage(data string, ext ...string) *Message {
-	if len(ext)%2 != 0 {
-		ext = append(ext, "")
-	}
+func NewMessage(data string) *Message {
 	return &Message{
 		Event: "message",
 		Data:  data,
-		pairs: ext,
 	}
 }
 
-func NewEventMessage(event, data string, ext ...string) *Message {
-	if len(ext)%2 != 0 {
-		ext = append(ext, "")
-	}
+func NewEventMessage(event, data string) *Message {
 	return &Message{
 		Event: event,
 		Data:  data,
-		pairs: ext,
 	}
 }
 
@@ -36,8 +32,11 @@ func Encode(m *Message) string {
 		msg = strutil.ToString("event: ", m.Event, "\n")
 	}
 	msg += strutil.ToString("data: ", m.Data)
-	for i := 0; i < len(m.pairs); i += 2 {
-		msg += m.pairs[i] + m.pairs[i+1]
+	if m.Id != "" {
+		msg += strutil.ToString("id: ", m.Id, "\n")
+	}
+	if m.Retry != 0 {
+		msg += strutil.ToString("retry: ", strconv.Itoa(m.Retry), "\n")
 	}
 	msg += "\n\n"
 	return msg
