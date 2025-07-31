@@ -117,7 +117,7 @@ func (c *Client) write(message *Message) {
 		return
 	}
 
-	_, err := c.w.Write([]byte(message.Encode()))
+	_, err := c.w.Write([]byte(Encode(message)))
 	if err != nil {
 		c.cancel()
 	}

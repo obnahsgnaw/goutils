@@ -22,9 +22,9 @@ type Manager struct {
 
 type Event int
 
-func NewManager(ctx context.Context) *Manager {
+func NewManager() *Manager {
 	return &Manager{
-		ctx:     ctx,
+		ctx:     context.Background(),
 		clients: make(map[*Client]struct{}),
 		tags:    make(map[string]*Group),
 		groups:  make(map[string]*Group),
@@ -32,6 +32,10 @@ func NewManager(ctx context.Context) *Manager {
 
 		},
 	}
+}
+
+func (s *Manager) SetContext(ctx context.Context) {
+	s.ctx = ctx
 }
 
 func (s *Manager) NewClient() *Client {

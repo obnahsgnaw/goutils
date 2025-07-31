@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	s := sse.Default()
+	s := sse.DefaultManager()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		c := s.NewClient()
 		g := r.URL.Query().Get("group")

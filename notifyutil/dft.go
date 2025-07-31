@@ -1,4 +1,4 @@
-package sse
+package notifyutil
 
 var _dft = NewManager()
 

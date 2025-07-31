@@ -2,19 +2,9 @@ package singletonutil
 
 import "github.com/obnahsgnaw/goutils/strutil"
 
-var m *Manager
-
-func init() {
-	m = NewManager()
-}
-
 type Manager struct {
 	prefix   string
 	builders map[string]*Builder
-}
-
-func Default() *Manager {
-	return m
 }
 
 func NewManager() *Manager {
@@ -30,7 +20,7 @@ func (s *Manager) Build(name string, generator func() interface{}) (b *Builder) 
 	name = s.prefixedName(name)
 	if b, ok = s.builders[name]; !ok {
 		b = NewBuilder(generator)
-		m.builders[name] = b
+		s.builders[name] = b
 	}
 
 	return b
